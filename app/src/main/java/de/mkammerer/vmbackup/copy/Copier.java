@@ -66,7 +66,7 @@ public class Copier {
                     targetIndexChannel.position(indexPositionToUpdate);
                     ChannelUtils.write(targetIndexChannel, sourceHash.toByteBuffer());
                 } else {
-                    skipped = skipped + dataBuffer.limit();
+                    skipped = skipped + dataBuffer.remaining();
                 }
 
                 progressReporter.onProgress(sourceChannel.position(), total);
