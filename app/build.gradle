@@ -15,6 +15,7 @@ dependencies {
 }
 
 application {
+    applicationName = 'vm-backup'
     mainClass = 'de.mkammerer.vmbackup.App'
 }
 
