@@ -15,6 +15,10 @@ be updated). This optimization has a positive effect only if the local disk is f
 
 Uh oh.
 
+## What happens if I change the VM on the external drive without updating the hash index?
+
+Uh oh. Don't do that. Bad. Very bad.
+
 ## Can I use this to back up my production VMs?
 
 I haven't tested it that thoroughly that I would recommend that. But I can't and won't stop you. Please report back how
