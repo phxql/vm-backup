@@ -21,3 +21,14 @@ application {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+tasks.withType(JavaCompile) {
+    options.deprecation = true
+    options.compilerArgs.add('-Werror')
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
