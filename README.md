@@ -26,6 +26,8 @@ No, it works on every file. I just use it for VM backups.
 
 ## How to use
 
+You'll need Java 17 on your machine.
+
 ```
 vm-backup SOURCE TARGET
 ```
