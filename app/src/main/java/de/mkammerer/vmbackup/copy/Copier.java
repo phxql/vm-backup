@@ -25,8 +25,8 @@ public class Copier {
     }
 
     public void copy(Path source, Path target, Path targetIndex, ProgressReporter progressReporter) throws IOException {
-        ByteBuffer dataBuffer = ByteBuffer.allocate(BLOCK_SIZE);
-        ByteBuffer indexBuffer = ByteBuffer.allocate(Hasher.HASH_SIZE);
+        ByteBuffer dataBuffer = ByteBuffer.allocateDirect(BLOCK_SIZE);
+        ByteBuffer indexBuffer = ByteBuffer.allocateDirect(Hasher.HASH_SIZE);
 
         long copied = 0;
         long skipped = 0;
@@ -73,7 +73,7 @@ public class Copier {
             }
 
             // Remove superfluous target data at the end (happens if source file has been made smaller)
-            targetChannel.truncate(sourceChannel.position());
+            targetChannel.truncate(total);
             // Remove superfluous index entries at the end (happens if source file has been made smaller)
             targetIndexChannel.truncate(targetIndexChannel.position());
         }
