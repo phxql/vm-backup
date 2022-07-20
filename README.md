@@ -36,6 +36,10 @@ Uh oh.
 
 Uh oh. Don't do that. Bad. Very bad.
 
+## What hash algorithm is used?
+
+SHA-256.
+
 ## Author
 
 Moritz Halbritter ([@phxql](https://github.com/phxql))
