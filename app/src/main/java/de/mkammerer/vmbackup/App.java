@@ -3,66 +3,112 @@
  */
 package de.mkammerer.vmbackup;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import de.mkammerer.vmbackup.copy.Copier;
+import de.mkammerer.vmbackup.hash.HashAlgorithm;
 import de.mkammerer.vmbackup.hash.Hasher;
+import de.mkammerer.vmbackup.progress.DataSize;
 import de.mkammerer.vmbackup.progress.ProgressReporter;
 import de.mkammerer.vmbackup.progress.SmartProgressReporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.ITypeConverter;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
+@Command(name = "vm-backup", mixinStandardHelpOptions = true, version = "${COMMAND-NAME} 0.0.2-SNAPSHOT", description = "A tool with which VMs can be easily backed up to an external drive")
+public class App implements Runnable {
+	@Parameters(index = "0", description = "Source file to copy")
+	private Path source;
 
-public class App {
-    private static final Logger LOGGER = LoggerFactory.getLogger(App.class);
+	@Parameters(index = "1", description = "Target file to copy to")
+	private Path target;
 
-    public static void main(String[] args) {
-        LOGGER.info("Starting");
-        try {
-            new App().run(args);
-            LOGGER.info("Stopped");
-        } catch (Exception e) {
-            LOGGER.error("Boom goes the program", e);
-            System.exit(1);
-        }
-    }
+	@Option(names = { "-b", "--block-size" }, description = "Block size to use for the chunks. Can use KiB, MiB, GiB, TiB suffixes. Default: ${DEFAULT-VALUE}", paramLabel = "size", defaultValue = "1MiB", converter = DataSizeTypeConverter.class)
+	private DataSize blockSize;
 
-    private void run(String[] args) throws Exception {
-        if (!checkArgs(args)) {
-            return;
-        }
-        Path source = Path.of(args[0]).toAbsolutePath();
-        Path target = Path.of(args[1]).toAbsolutePath();
-        Path targetIndex = getTargetIndexFile(target).toAbsolutePath();
+	@Option(names = { "-a", "--hash-algorithm" }, description = "Hash algorithm to use for the chunks. Valid values: ${COMPLETION-CANDIDATES}. Default: ${DEFAULT-VALUE}", paramLabel = "algorithm", defaultValue = "SHA256")
+	private HashAlgorithm hashAlgorithm;
 
-        LOGGER.info("Source file: {}", source);
-        LOGGER.info("Target file: {}", target);
-        LOGGER.info("Target index file: {}", targetIndex);
+	@Option(names = { "-d", "--debug" }, description = "Switches on debug logging: Default: ${DEFAULT-VALUE}", defaultValue = "false")
+	private boolean debug;
 
-        if (!Files.exists(source)) {
-            LOGGER.error("Source file not found: {}", source);
-            return;
-        }
-        if (!Files.isReadable(source)) {
-            LOGGER.error("Source file exists, but unable to read: {}", source);
-            return;
-        }
+	public static void main(String[] args) {
+		new CommandLine(new App()).execute(args);
+	}
 
-        ProgressReporter progressReporter = new SmartProgressReporter();
+	@Override
+	public void run() {
+		setLoggerProperties();
 
-        Copier copier = new Copier(new Hasher());
-        copier.copy(source, target, targetIndex, progressReporter);
-    }
+		// Can't be static or a field, otherwise the logger initializes too soon and the properties aren't used
+		Logger logger = LoggerFactory.getLogger(App.class);
 
-    private Path getTargetIndexFile(Path target) {
-        return target.resolveSibling(target.getFileName() + ".vm-backup-index");
-    }
+		this.source = this.source.toAbsolutePath();
+		this.target = this.target.toAbsolutePath();
+		Path targetIndex = getTargetIndexFile(this.target).toAbsolutePath();
 
-    private boolean checkArgs(String[] args) {
-        if (args.length != 2) {
-            LOGGER.info("Usage: vm-backup SOURCE TARGET");
-            return false;
-        }
-        return true;
-    }
+		logger.debug("Debug log enabled");
+		logger.info("Source file: {}", this.source);
+		logger.info("Target file: {}", this.target);
+		logger.info("Target index file: {}", targetIndex);
+		logger.info("Block size: {}", this.blockSize);
+		logger.info("Hash algorithm: {}", this.hashAlgorithm);
+
+		if (!Files.exists(this.source)) {
+			throw new SourceFileException("Source file not found: %s".formatted(this.source));
+		}
+		if (!Files.isReadable(this.source)) {
+			throw new SourceFileException("Source file exists, but unable to read: %s".formatted(this.source));
+		}
+
+		ProgressReporter progressReporter = new SmartProgressReporter();
+
+		Copier copier = new Copier(new Hasher(this.hashAlgorithm), this.blockSize, progressReporter);
+		try {
+			copier.copy(this.source, this.target, targetIndex);
+		}
+		catch (IOException e) {
+			throw new UncheckedIOException("Copying failed", e);
+		}
+	}
+
+	private Path getTargetIndexFile(Path target) {
+		return target.resolveSibling(target.getFileName() + ".vm-backup-index");
+	}
+
+	private void setLoggerProperties() {
+		// See https://www.slf4j.org/api/org/slf4j/impl/SimpleLogger.html
+		setPropertyIfNotSet("org.slf4j.simpleLogger.logFile", "System.out");
+		setPropertyIfNotSet("org.slf4j.simpleLogger.defaultLogLevel", this.debug ? "debug" : "info");
+		setPropertyIfNotSet("org.slf4j.simpleLogger.showDateTime", "true");
+		setPropertyIfNotSet("org.slf4j.simpleLogger.dateTimeFormat", "yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+		setPropertyIfNotSet("org.slf4j.simpleLogger.showThreadName", "false");
+		setPropertyIfNotSet("org.slf4j.simpleLogger.showShortLogName", "true");
+	}
+
+	private void setPropertyIfNotSet(String name, String value) {
+		if (System.getProperty(name) == null) {
+			System.setProperty(name, value);
+		}
+	}
+
+	private static class SourceFileException extends RuntimeException {
+		public SourceFileException(String message) {
+			super(message);
+		}
+	}
+
+	private static class DataSizeTypeConverter implements ITypeConverter<DataSize> {
+		@Override
+		public DataSize convert(String value) throws Exception {
+			return DataSize.parse(value);
+		}
+	}
 }
