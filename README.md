@@ -35,7 +35,7 @@ A tool with which VMs can be easily backed up to an external drive
                             SHA256
   -b, --block-size=size   Block size to use for the chunks. Can use KiB, MiB,
                             GiB, TiB suffixes. Default: 1MiB
-  -d, --debug             Switches on debug logging. Default: false
+  -d, --debug             Switches on debug logging. Not enabled by default.
   -h, --help              Show this help message and exit.
   -V, --version           Print version information and exit.
 ```

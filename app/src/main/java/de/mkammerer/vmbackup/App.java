@@ -36,7 +36,7 @@ public class App implements Runnable {
 	@Option(names = { "-a", "--hash-algorithm" }, description = "Hash algorithm to use for the chunks. Valid values: ${COMPLETION-CANDIDATES}. Default: ${DEFAULT-VALUE}", paramLabel = "algorithm", defaultValue = "SHA256")
 	private HashAlgorithm hashAlgorithm;
 
-	@Option(names = { "-d", "--debug" }, description = "Switches on debug logging. Default: ${DEFAULT-VALUE}", defaultValue = "false")
+	@Option(names = { "-d", "--debug" }, description = "Switches on debug logging. Not enabled by default.", defaultValue = "false")
 	private boolean debug;
 
 	public static void main(String[] args) {
