@@ -50,7 +50,11 @@ Uh oh. Don't do that. Bad. Very bad.
 
 ## What hash algorithm is used?
 
-SHA-256.
+SHA-256 by default. You can change this with the `--hash-algorithm` flag.
+
+## What bloock size is used?
+
+1 MiB by default. You can change this with the `--block-size` flag.
 
 ## Author
 
