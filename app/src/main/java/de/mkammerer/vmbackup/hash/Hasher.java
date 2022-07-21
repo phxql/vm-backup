@@ -4,27 +4,34 @@ import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import de.mkammerer.vmbackup.progress.DataSize;
+
 /**
  * Warning: This class is not thread safe!
  */
 public class Hasher {
-    private static final String SHA_256 = "SHA-256";
-    public static final int HASH_SIZE = 256 / 8;
+	private final MessageDigest digest;
 
-    private final MessageDigest digest;
+	private final DataSize hashSize;
 
-    public Hasher() {
-        try {
-            this.digest = MessageDigest.getInstance(SHA_256);
-        } catch (NoSuchAlgorithmException e) {
-            throw new AssertionError("Failed to get SHA-256 digest", e);
-        }
-    }
+	public Hasher(HashAlgorithm hashAlgorithm) {
+		try {
+			this.digest = MessageDigest.getInstance(hashAlgorithm.getId());
+			this.hashSize = DataSize.ofBytes(this.digest.getDigestLength());
+		}
+		catch (NoSuchAlgorithmException e) {
+			throw new IllegalArgumentException("Failed to get %s digest".formatted(hashAlgorithm.getId()), e);
+		}
+	}
 
-    public Hash hash(ByteBuffer buffer) {
-        buffer.mark();
-        this.digest.update(buffer);
-        buffer.reset();
-        return new Hash(this.digest.digest());
-    }
+	public DataSize getHashSize() {
+		return this.hashSize;
+	}
+
+	public Hash hash(ByteBuffer buffer) {
+		buffer.mark();
+		this.digest.update(buffer);
+		buffer.reset();
+		return new Hash(this.digest.digest());
+	}
 }
