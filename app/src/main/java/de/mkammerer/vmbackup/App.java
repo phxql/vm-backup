@@ -3,11 +3,6 @@
  */
 package de.mkammerer.vmbackup;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-
 import de.mkammerer.vmbackup.copy.Copier;
 import de.mkammerer.vmbackup.hash.HashAlgorithm;
 import de.mkammerer.vmbackup.hash.Hasher;
@@ -21,6 +16,11 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.ITypeConverter;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 @Command(name = "vm-backup", mixinStandardHelpOptions = true, version = "${COMMAND-NAME} 0.0.2-SNAPSHOT", description = "A tool with which VMs can be easily backed up to an external drive")
 public class App implements Runnable {
@@ -107,8 +107,12 @@ public class App implements Runnable {
 
 	private static class DataSizeTypeConverter implements ITypeConverter<DataSize> {
 		@Override
-		public DataSize convert(String value) throws Exception {
-			return DataSize.parse(value);
+		public DataSize convert(String value) {
+			try {
+				return DataSize.parse(value);
+			} catch (RuntimeException e) {
+				throw new CommandLine.TypeConversionException("Invalid format: must be <number> [B | KiB | MiB | GiB | TiB], but was %s".formatted(value));
+			}
 		}
 	}
 }
