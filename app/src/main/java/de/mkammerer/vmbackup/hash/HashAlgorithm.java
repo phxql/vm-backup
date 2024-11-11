@@ -14,6 +14,6 @@ public enum HashAlgorithm {
 	}
 
 	public String getId() {
-		return id;
+		return this.id;
 	}
 }

@@ -16,19 +16,19 @@ public record DataSize(long bytes) {
 
 	@Override
     public String toString() {
-        if (bytes >= BYTES_IN_TB) {
-            return String.format(Locale.ROOT, "%.2f TiB", ((double) bytes) / BYTES_IN_TB);
+		if (this.bytes >= BYTES_IN_TB) {
+			return String.format(Locale.ROOT, "%.2f TiB", ((double) this.bytes) / BYTES_IN_TB);
         }
-        if (bytes >= BYTES_IN_GB) {
-            return String.format(Locale.ROOT, "%.2f GiB", ((double) bytes) / BYTES_IN_GB);
+		if (this.bytes >= BYTES_IN_GB) {
+			return String.format(Locale.ROOT, "%.2f GiB", ((double) this.bytes) / BYTES_IN_GB);
         }
-        if (bytes >= BYTES_IN_MB) {
-            return String.format(Locale.ROOT, "%.2f MiB", ((double) bytes) / BYTES_IN_MB);
+		if (this.bytes >= BYTES_IN_MB) {
+			return String.format(Locale.ROOT, "%.2f MiB", ((double) this.bytes) / BYTES_IN_MB);
 		}
-		if (bytes >= BYTES_IN_KB) {
-			return String.format(Locale.ROOT, "%.2f KiB", ((double) bytes) / BYTES_IN_KB);
+		if (this.bytes >= BYTES_IN_KB) {
+			return String.format(Locale.ROOT, "%.2f KiB", ((double) this.bytes) / BYTES_IN_KB);
 		}
-		return String.format(Locale.ROOT, "%d B", bytes);
+		return String.format(Locale.ROOT, "%d B", this.bytes);
 	}
 
 	public static DataSize ofBytes(long bytes) {

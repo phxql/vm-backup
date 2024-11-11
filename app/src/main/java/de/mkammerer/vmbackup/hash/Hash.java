@@ -1,10 +1,10 @@
 package de.mkammerer.vmbackup.hash;
 
-import de.mkammerer.vmbackup.util.ByteBufferUtils;
-
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HexFormat;
+
+import de.mkammerer.vmbackup.util.ByteBufferUtils;
 
 public record Hash(byte[] value) {
     public ByteBuffer toByteBuffer() {
@@ -20,12 +20,12 @@ public record Hash(byte[] value) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Hash hash = (Hash) o;
-        return Arrays.equals(value, hash.value);
+        return Arrays.equals(this.value, hash.value);
     }
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(value);
+        return Arrays.hashCode(this.value);
     }
 
     @Override
