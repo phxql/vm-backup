@@ -1,22 +1,27 @@
 plugins {
     id 'application'
-	id 'org.graalvm.buildtools.native' version '0.9.13'
+	id 'org.graalvm.buildtools.native' version '0.10.3'
 }
 
 repositories {
     mavenCentral()
 }
 
+String picocliVersion = '4.7.6'
+String slf4jVersion = '2.0.16'
+
 dependencies {
-	implementation 'org.slf4j:slf4j-api:1.7.36'
-	implementation 'info.picocli:picocli:4.6.3'
+	implementation "org.slf4j:slf4j-api:$slf4jVersion"
+	implementation "info.picocli:picocli:$picocliVersion"
 
-	runtimeOnly 'org.slf4j:slf4j-simple:1.7.36'
+	runtimeOnly "org.slf4j:slf4j-simple:$slf4jVersion"
 
-	annotationProcessor 'info.picocli:picocli-codegen:4.6.3'
+	annotationProcessor "info.picocli:picocli-codegen:$picocliVersion"
 
-	testImplementation 'org.junit.jupiter:junit-jupiter:5.8.2'
-	testImplementation 'org.assertj:assertj-core:3.23.1'
+	testImplementation 'org.junit.jupiter:junit-jupiter:5.11.3'
+	testImplementation 'org.assertj:assertj-core:3.26.3'
+
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.3'
 }
 
 application {
@@ -28,7 +33,7 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
-tasks.withType(JavaCompile) {
+tasks.withType(JavaCompile).configureEach {
 	options.deprecation = true
 	options.compilerArgs += ['-Werror']
 	options.compilerArgs += ["-Aproject=${project.group}/${project.name}"]
