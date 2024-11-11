@@ -25,19 +25,21 @@ No, it works on every file. I just use it for VM backups.
 You'll need Java 17 on your machine.
 
 ```
-Usage: vm-backup [-dhV] [-a=algorithm] [-b=size] <source> <target>
+Usage: vm-backup [-dhV] [--no-last-modified] [-a=algorithm] [-b=size] <source>
+                 <target>
 A tool with which VMs can be easily backed up to an external drive
-      <source>            Source file to copy
-      <target>            Target file to copy to
+      <source>             Source file to copy
+      <target>             Target file to copy to
   -a, --hash-algorithm=algorithm
-                          Hash algorithm to use for the chunks. Valid values:
-                            SHA1, SHA224, SHA256, SHA384, SHA512. Default:
-                            SHA256
-  -b, --block-size=size   Block size to use for the chunks. Can use KiB, MiB,
-                            GiB, TiB suffixes. Default: 1MiB
-  -d, --debug             Switches on debug logging. Not enabled by default.
-  -h, --help              Show this help message and exit.
-  -V, --version           Print version information and exit.
+                           Hash algorithm to use for the chunks. Valid values:
+                             SHA1, SHA224, SHA256, SHA384, SHA512. Default:
+                             SHA256
+  -b, --block-size=size    Block size to use for the chunks. Can use KiB, MiB,
+                             GiB, TiB suffixes. Default: 1MiB
+  -d, --debug              Switches on debug logging. Not enabled by default.
+  -h, --help               Show this help message and exit.
+      --no-last-modified   Skips the last modified time checking.
+  -V, --version            Print version information and exit.
 ```
 
 ## What about hash collisions?

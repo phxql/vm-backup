@@ -3,12 +3,18 @@
  */
 package de.mkammerer.vmbackup;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import de.mkammerer.vmbackup.copy.Copier;
 import de.mkammerer.vmbackup.hash.HashAlgorithm;
 import de.mkammerer.vmbackup.hash.Hasher;
 import de.mkammerer.vmbackup.progress.DataSize;
 import de.mkammerer.vmbackup.progress.ProgressReporter;
 import de.mkammerer.vmbackup.progress.SmartProgressReporter;
+import de.mkammerer.vmbackup.time.LastModified;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
@@ -17,102 +23,106 @@ import picocli.CommandLine.ITypeConverter;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-
 @Command(name = "vm-backup", mixinStandardHelpOptions = true, version = "${COMMAND-NAME} 0.0.2-SNAPSHOT", description = "A tool with which VMs can be easily backed up to an external drive")
 public class App implements Runnable {
-	@Parameters(index = "0", description = "Source file to copy")
-	private Path source;
+    @Parameters(index = "0", description = "Source file to copy")
+    private Path source;
 
-	@Parameters(index = "1", description = "Target file to copy to")
-	private Path target;
+    @Parameters(index = "1", description = "Target file to copy to")
+    private Path target;
 
-	@Option(names = { "-b", "--block-size" }, description = "Block size to use for the chunks. Can use KiB, MiB, GiB, TiB suffixes. Default: ${DEFAULT-VALUE}", paramLabel = "size", defaultValue = "1MiB", converter = DataSizeTypeConverter.class)
-	private DataSize blockSize;
+    @Option(names = {"-b", "--block-size"}, description = "Block size to use for the chunks. Can use KiB, MiB, GiB, TiB suffixes. Default: ${DEFAULT-VALUE}", paramLabel = "size", defaultValue = "1MiB", converter = DataSizeTypeConverter.class)
+    private DataSize blockSize;
 
-	@Option(names = { "-a", "--hash-algorithm" }, description = "Hash algorithm to use for the chunks. Valid values: ${COMPLETION-CANDIDATES}. Default: ${DEFAULT-VALUE}", paramLabel = "algorithm", defaultValue = "SHA256")
-	private HashAlgorithm hashAlgorithm;
+    @Option(names = {"-a", "--hash-algorithm"}, description = "Hash algorithm to use for the chunks. Valid values: ${COMPLETION-CANDIDATES}. Default: ${DEFAULT-VALUE}", paramLabel = "algorithm", defaultValue = "SHA256")
+    private HashAlgorithm hashAlgorithm;
 
-	@Option(names = { "-d", "--debug" }, description = "Switches on debug logging. Not enabled by default.", defaultValue = "false")
-	private boolean debug;
+    @Option(names = {"-d", "--debug"}, description = "Switches on debug logging. Not enabled by default.", defaultValue = "false")
+    private boolean debug;
 
-	public static void main(String[] args) {
-		new CommandLine(new App()).execute(args);
-	}
+    @Option(names = {"--no-last-modified"}, description = "Skips the last modified time checking.", defaultValue = "false")
+    private boolean noLastModified;
 
-	@Override
-	public void run() {
-		setLoggerProperties();
+    public static void main(String[] args) {
+        new CommandLine(new App()).execute(args);
+    }
 
-		// Can't be static or a field, otherwise the logger initializes too soon and the properties aren't used
-		Logger logger = LoggerFactory.getLogger(App.class);
+    @Override
+    public void run() {
+        setLoggerProperties();
 
-		this.source = this.source.toAbsolutePath();
-		this.target = this.target.toAbsolutePath();
-		Path targetIndex = getTargetIndexFile(this.target).toAbsolutePath();
+        // Can't be static or a field, otherwise the logger initializes too soon and the properties aren't used
+        Logger logger = LoggerFactory.getLogger(App.class);
 
-		logger.debug("Debug log enabled");
-		logger.info("Source file: {}", this.source);
-		logger.info("Target file: {}", this.target);
-		logger.info("Target index file: {}", targetIndex);
-		logger.info("Block size: {}", this.blockSize);
-		logger.info("Hash algorithm: {}", this.hashAlgorithm);
+        this.source = this.source.toAbsolutePath();
+        this.target = this.target.toAbsolutePath();
+        Path targetIndex = getTargetIndexFile(this.target).toAbsolutePath();
 
-		if (!Files.exists(this.source)) {
-			throw new SourceFileException("Source file not found: %s".formatted(this.source));
-		}
-		if (!Files.isReadable(this.source)) {
-			throw new SourceFileException("Source file exists, but unable to read: %s".formatted(this.source));
-		}
+        logger.debug("Debug log enabled");
+        logger.info("Source file: {}", this.source);
+        logger.info("Target file: {}", this.target);
+        logger.info("Target index file: {}", targetIndex);
+        logger.info("Block size: {}", this.blockSize);
+        logger.info("Hash algorithm: {}", this.hashAlgorithm);
 
-		ProgressReporter progressReporter = new SmartProgressReporter();
+        if (!Files.exists(this.source)) {
+            throw new SourceFileException("Source file not found: %s".formatted(this.source));
+        }
+        if (!Files.isReadable(this.source)) {
+            throw new SourceFileException("Source file exists, but unable to read: %s".formatted(this.source));
+        }
 
-		Copier copier = new Copier(new Hasher(this.hashAlgorithm), this.blockSize, progressReporter);
-		try {
-			copier.copy(this.source, this.target, targetIndex);
-		}
-		catch (IOException e) {
-			throw new UncheckedIOException("Copying failed", e);
-		}
-	}
+        LastModified lastModified = this.noLastModified ? LastModified.noop() : LastModified.create();
+        if (lastModified.hasSameLastModified(this.source, this.target)) {
+            logger.info("Source and target have same last modified time, skipping copy");
+            return;
+        }
 
-	private Path getTargetIndexFile(Path target) {
-		return target.resolveSibling(target.getFileName() + ".vm-backup-index");
-	}
+        ProgressReporter progressReporter = new SmartProgressReporter();
 
-	private void setLoggerProperties() {
-		// See https://www.slf4j.org/api/org/slf4j/impl/SimpleLogger.html
-		setPropertyIfNotSet("org.slf4j.simpleLogger.logFile", "System.out");
-		setPropertyIfNotSet("org.slf4j.simpleLogger.defaultLogLevel", this.debug ? "debug" : "info");
-		setPropertyIfNotSet("org.slf4j.simpleLogger.showDateTime", "true");
-		setPropertyIfNotSet("org.slf4j.simpleLogger.dateTimeFormat", "yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-		setPropertyIfNotSet("org.slf4j.simpleLogger.showThreadName", "false");
-		setPropertyIfNotSet("org.slf4j.simpleLogger.showShortLogName", "true");
-	}
+        Copier copier = new Copier(new Hasher(this.hashAlgorithm), this.blockSize, progressReporter);
+        try {
+            copier.copy(this.source, this.target, targetIndex);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Copying failed", e);
+        }
+        lastModified.syncLastModified(this.source, this.target);
+    }
 
-	private void setPropertyIfNotSet(String name, String value) {
-		if (System.getProperty(name) == null) {
-			System.setProperty(name, value);
-		}
-	}
+    private Path getTargetIndexFile(Path target) {
+        return target.resolveSibling(target.getFileName() + ".vm-backup-index");
+    }
 
-	private static class SourceFileException extends RuntimeException {
-		public SourceFileException(String message) {
-			super(message);
-		}
-	}
+    private void setLoggerProperties() {
+        // See https://www.slf4j.org/api/org/slf4j/impl/SimpleLogger.html
+        setPropertyIfNotSet("org.slf4j.simpleLogger.logFile", "System.out");
+        setPropertyIfNotSet("org.slf4j.simpleLogger.defaultLogLevel", this.debug ? "debug" : "info");
+        setPropertyIfNotSet("org.slf4j.simpleLogger.showDateTime", "true");
+        setPropertyIfNotSet("org.slf4j.simpleLogger.dateTimeFormat", "yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+        setPropertyIfNotSet("org.slf4j.simpleLogger.showThreadName", "false");
+        setPropertyIfNotSet("org.slf4j.simpleLogger.showShortLogName", "true");
+    }
 
-	private static class DataSizeTypeConverter implements ITypeConverter<DataSize> {
-		@Override
-		public DataSize convert(String value) {
-			try {
-				return DataSize.parse(value);
-			} catch (RuntimeException e) {
-				throw new CommandLine.TypeConversionException("Invalid format: must be <number> [B | KiB | MiB | GiB | TiB], but was %s".formatted(value));
-			}
-		}
-	}
+    private void setPropertyIfNotSet(String name, String value) {
+        if (System.getProperty(name) == null) {
+            System.setProperty(name, value);
+        }
+    }
+
+    private static class SourceFileException extends RuntimeException {
+        public SourceFileException(String message) {
+            super(message);
+        }
+    }
+
+    private static class DataSizeTypeConverter implements ITypeConverter<DataSize> {
+        @Override
+        public DataSize convert(String value) {
+            try {
+                return DataSize.parse(value);
+            } catch (RuntimeException e) {
+                throw new CommandLine.TypeConversionException("Invalid format: must be <number> [B | KiB | MiB | GiB | TiB], but was %s".formatted(value));
+            }
+        }
+    }
 }
